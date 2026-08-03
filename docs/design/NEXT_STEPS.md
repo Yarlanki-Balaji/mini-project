@@ -57,7 +57,7 @@ cd frontend && npm run dev     # separate terminal → http://localhost:5173
 These could not be tested offline and are worth watching:
 
 - **`timeout=30` is accepted** by the installed `langchain-google-genai` / `langchain-groq` versions. No test constructs the real client classes, so this is unproven.
-- **Chunk content shape.** `gemini-2.5-flash` is a thinking model; `_as_text()` in `llm.py` normalizes list-shaped content, but only fakes have exercised it. If you ever see `[object Object]` streaming, that's the path.
+- **Chunk content shape.** `gemini-flash-latest` is a thinking model; `_as_text()` in `llm.py` normalizes list-shaped content, but only fakes have exercised it. If you ever see `[object Object]` streaming, that's the path.
 - **Keyword quality on real data.** `top_keywords_contrastive` subtracts the praise/complaint overlap. Check the real output actually reads as distinct insight rather than generic nouns.
 - **Backend logs** now name the provider on every attempt and warn on fallback — that's how you prove the Groq fallback fired.
 

@@ -69,8 +69,10 @@ def gemini_llm():
     # provider package isn't installed.
     from langchain_google_genai import ChatGoogleGenerativeAI
 
+    # Rolling alias, not a pinned version: gemini-2.5-flash got gated off for
+    # new API keys with no warning. This must still work at a graded demo months out.
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", google_api_key=get_settings().gemini_api_key, timeout=30
+        model="gemini-flash-latest", google_api_key=get_settings().gemini_api_key, timeout=30
     )
 
 
