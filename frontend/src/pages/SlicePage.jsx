@@ -16,6 +16,10 @@ export default function SlicePage() {
     return () => clearTimeout(t)
   }, [idea])
 
+  // close any open SSE stream on unmount — guards against a route change
+  // mid-stream (Phase 4 adds routing) leaking the connection and burning quota
+  useEffect(() => () => esRef.current?.close(), [])
+
   const analyze = async () => {
     setRunning(true); setAgent(null); setStrategy('')
     try {
