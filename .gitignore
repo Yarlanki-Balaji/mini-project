@@ -1,0 +1,20 @@
+# environments
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# secrets
+.env
+
+# data & artifacts (sampled datasets are re-creatable via scripts/)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+vector_db/*
+!vector_db/.gitkeep
+
+# frontend build
+frontend/dist/
