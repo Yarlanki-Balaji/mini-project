@@ -56,8 +56,10 @@ cd frontend && npm run dev     # separate terminal → http://localhost:5173
 
 These could not be tested offline and are worth watching:
 
-- **`timeout=30` is accepted** by the installed `langchain-google-genai` / `langchain-groq` versions. No test constructs the real client classes, so this is unproven.
-- **Chunk content shape.** `gemini-flash-latest` is a thinking model; `_as_text()` in `llm.py` normalizes list-shaped content, but only fakes have exercised it. If you ever see `[object Object]` streaming, that's the path.
+- ~~**`timeout=30` is accepted**~~ — **CONFIRMED 4 Aug 2026.** Both real clients construct and stream with `timeout=30`.
+- ~~**Chunk content shape**~~ — **CONFIRMED 4 Aug 2026, and it mattered.** Gemini returns `chunk.content` as a **list of dicts** (`[{'type': 'text', 'text': '...', 'index': 0}]`), not a string. `_as_text()` in `llm.py` flattens it correctly. Without that normalizer the UI would have streamed raw dicts — it was added on purely theoretical grounds during the final review and turned out to be load-bearing. See `live-verification-notes.md`.
+- **Model IDs deprecate without warning.** `gemini-2.5-flash` returned `404 NOT_FOUND: no longer available to new users` on a freshly-created key. Now using the rolling alias `gemini-flash-latest`. If Gemini ever 404s again, list what your key can actually reach:
+  `.venv/Scripts/python -c "import httpx; from app.config import get_settings; print([m['name'] for m in httpx.get('https://generativelanguage.googleapis.com/v1beta/models', params={'key': get_settings().gemini_api_key}).json()['models']])"`
 - **Keyword quality on real data.** `top_keywords_contrastive` subtracts the praise/complaint overlap. Check the real output actually reads as distinct insight rather than generic nouns.
 - **Backend logs** now name the provider on every attempt and warn on fallback — that's how you prove the Groq fallback fired.
 
