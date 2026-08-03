@@ -1,6 +1,6 @@
 import pandas as pd
 
-from agent3_customer.sentiment import aggregate_sentiment, _top_keywords
+from agent3_customer.sentiment import aggregate_sentiment, _top_keywords, top_keywords_contrastive
 
 
 def _df():
@@ -140,6 +140,15 @@ def test_aggregate_sentiment_end_to_end_with_sparse_negative_bucket():
     # (here, only "bad"/"service" survive stopword removal) must still
     # produce a complete 5-key payload -- the sparse keyword list must not
     # blow up aggregate_sentiment or omit keys.
+    #
+    # NOTE (Group 5 contrastive-keywords fix): _POS_TEXT itself contains the
+    # word "service" ("...excellent service."), which the sparse negative
+    # bucket ("Bad service.") also contains. Under the pre-contrastive
+    # implementation this shared word survived in both lists (the original
+    # assertion here was ["bad", "service"]). top_keywords_contrastive now
+    # correctly strips words shared by both polarity buckets, so "service"
+    # is removed from the negative list, leaving only the genuinely
+    # negative-distinctive word.
     df = pd.DataFrame(
         {
             "rating": [5] * 6 + [1] * 2,
@@ -151,5 +160,47 @@ def test_aggregate_sentiment_end_to_end_with_sparse_negative_bucket():
         "positive_pct", "neutral_pct", "negative_pct",
         "top_positive_keywords", "top_negative_keywords",
     }
-    assert out["top_negative_keywords"] == ["bad", "service"]
+    assert out["top_negative_keywords"] == ["bad"]
     assert out["negative_pct"] == 25.0
+
+
+# --- Group 5 (final review pass): contrastive keyword selection ------------
+#
+# _disjoint_df above was deliberately built with NON-overlapping vocabulary
+# specifically to make its assertions deterministic -- which is exactly why
+# it cannot catch a "top-n-by-frequency selects the same generic words for
+# both buckets" bug. The fixture below is the opposite on purpose: both
+# buckets share the same high-frequency generic nouns (food, place,
+# service), same as realistic restaurant review text, so plain per-bucket
+# _top_keywords would converge on the same words for both polarities.
+
+_OVERLAP_POS_TEXTS = [
+    "The food here is great and the place has amazing service overall.",
+] * 8
+_OVERLAP_NEG_TEXTS = [
+    "The food here is bad and the place has terrible service overall.",
+] * 8
+
+
+def test_top_keywords_contrastive_removes_words_shared_by_both_buckets():
+    pos, neg = top_keywords_contrastive(_OVERLAP_POS_TEXTS, _OVERLAP_NEG_TEXTS, n=5, pool=6)
+    assert not set(pos) & set(neg)
+    # Still non-empty: genuinely distinctive words exist on each side
+    # ("great"/"amazing" vs. "bad"/"terrible") even after the shared generic
+    # nouns ("food", "place", "service", "overall") are stripped.
+    assert pos and neg
+
+
+def test_aggregate_sentiment_praise_and_complaint_keywords_differ():
+    # Integration-level version of the test above: end to end through
+    # aggregate_sentiment, on a fixture shaped like real Yelp-style text
+    # where both polarities mention the same subject nouns.
+    df = pd.DataFrame(
+        {
+            "rating": [5] * 8 + [1] * 8,
+            "text": _OVERLAP_POS_TEXTS + _OVERLAP_NEG_TEXTS,
+        }
+    )
+    out = aggregate_sentiment(df)
+    assert not set(out["top_positive_keywords"]) & set(out["top_negative_keywords"])
+    assert out["top_positive_keywords"] and out["top_negative_keywords"]

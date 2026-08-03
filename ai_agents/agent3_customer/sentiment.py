@@ -36,6 +36,29 @@ def _top_keywords(texts: list[str], n: int = 5) -> list[str]:
     return list(vec.get_feature_names_out())
 
 
+def top_keywords_contrastive(
+    pos_texts: list[str], neg_texts: list[str], n: int = 5, pool: int = 6
+) -> tuple[list[str], list[str]]:
+    """Return (top_positive, top_negative) keyword lists with no overlap.
+
+    Plain top-n-by-frequency selects generic high-frequency nouns (e.g.
+    "food", "place", "service") that dominate BOTH buckets on realistic
+    review text, so positive and negative lists converge on the same words
+    -- useless as a contrastive signal for a headline or an LLM prompt.
+    Over-fetch a wider pool per side (n * pool), then drop anything that
+    appears in both pools before truncating back down to n, so each
+    returned list is skewed toward words that are actually distinctive to
+    that polarity.
+    """
+    pos_pool = _top_keywords(pos_texts, n * pool)
+    neg_pool = _top_keywords(neg_texts, n * pool)
+    shared = set(pos_pool) & set(neg_pool)
+    return (
+        [k for k in pos_pool if k not in shared][:n],
+        [k for k in neg_pool if k not in shared][:n],
+    )
+
+
 def aggregate_sentiment(df: pd.DataFrame) -> dict:
     """Aggregate VADER sentiment and top keywords for a category's reviews.
 
@@ -50,10 +73,14 @@ def aggregate_sentiment(df: pd.DataFrame) -> dict:
     labels = df["text"].map(_label)
     total = len(df)
     pct = lambda k: round(100 * (labels == k).sum() / total, 1)  # noqa: E731
+    top_positive, top_negative = top_keywords_contrastive(
+        df.loc[labels == "positive", "text"].tolist(),
+        df.loc[labels == "negative", "text"].tolist(),
+    )
     return {
         "positive_pct": pct("positive"),
         "neutral_pct": pct("neutral"),
         "negative_pct": pct("negative"),
-        "top_positive_keywords": _top_keywords(df.loc[labels == "positive", "text"].tolist()),
-        "top_negative_keywords": _top_keywords(df.loc[labels == "negative", "text"].tolist()),
+        "top_positive_keywords": top_positive,
+        "top_negative_keywords": top_negative,
     }
