@@ -43,4 +43,5 @@ else:
     row.sample_size = len(df)
     row.updated_at = datetime.now(timezone.utc)
 db.commit()
+db.close()
 print(f"{slug}: upserted customer_insight ({len(df)} reviews) -> {payload}")

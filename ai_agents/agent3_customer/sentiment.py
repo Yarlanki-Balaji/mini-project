@@ -15,14 +15,38 @@ def _label(text: str) -> str:
 
 
 def _top_keywords(texts: list[str], n: int = 5) -> list[str]:
+    """Return up to `n` most frequent non-stopword unigrams across `texts`.
+
+    Contract: "up to n", not exactly n. Returns [] for an empty bucket and
+    for a bucket whose combined vocabulary is empty after stopword removal
+    (e.g. reviews consisting only of stopwords/punctuation -- CountVectorizer
+    would otherwise raise ValueError: "empty vocabulary"). Returns fewer than
+    n tokens when the bucket has fewer than n unique non-stopword tokens
+    (e.g. a sparse bucket with only 1-2 reviews). Callers (including the
+    category_insights payload) must not assume a fixed length of n.
+    """
     if not texts:
         return []
     vec = CountVectorizer(stop_words="english", max_features=n, ngram_range=(1, 1))
-    vec.fit(texts)
+    try:
+        vec.fit(texts)
+    except ValueError:
+        # "empty vocabulary; perhaps the documents only contain stop words"
+        return []
     return list(vec.get_feature_names_out())
 
 
 def aggregate_sentiment(df: pd.DataFrame) -> dict:
+    """Aggregate VADER sentiment and top keywords for a category's reviews.
+
+    payload = {
+        "positive_pct": float, "neutral_pct": float, "negative_pct": float,
+        "top_positive_keywords": [str, ...up to 5],
+        "top_negative_keywords": [str, ...up to 5],
+    }
+    The keyword lists may have fewer than 5 entries (or be empty) for a
+    sparse or stopword-only bucket -- see `_top_keywords`.
+    """
     labels = df["text"].map(_label)
     total = len(df)
     pct = lambda k: round(100 * (labels == k).sum() / total, 1)  # noqa: E731
