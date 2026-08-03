@@ -1,4 +1,6 @@
-from app.services.planner import detect_category
+import pytest
+
+from app.services.planner import _KEYWORD_PATTERNS, detect_category
 
 
 def test_food_idea_maps_to_food_restaurants():
@@ -65,3 +67,48 @@ def test_endpoint_surfaces_service_result_faithfully(client):
     # The router must forward the service's dict as-is (all three keys,
     # including a None category), not a status-only or partial response.
     assert r.json() == detect_category(idea)
+
+
+# --- Word-boundary matching (review Finding 1): plain `kw in text` substring
+# containment produced confidently WRONG categories, e.g. "spa" inside
+# "space" wrongly matching beauty_personal_care. Keywords must match on word
+# boundaries, with an optional (s|es) plural suffix so real plurals like
+# "restaurants" still match the singular keyword "restaurant". See
+# task-8-report.md for the deliberate-breakage proof (each "must NOT match"
+# row here fails under the old substring semantics). ---
+
+WORD_BOUNDARY_TABLE = [
+    # (category owning the keyword, keyword, input text, should the keyword's
+    # compiled pattern match that text)
+    ("beauty_personal_care", "spa", "space tourism startup", False),
+    ("software_apps", "app", "apparel brand", False),
+    ("software_apps", "app", "happy hour bar", False),
+    ("software_apps", "app", "home appliance repair", False),
+    ("food_restaurants", "restaurant", "best restaurants nearby", True),
+    ("electronics", "gadget", "selling gadgets online", True),
+    ("food_restaurants", "cloud kitchen", "cloud kitchen for students", True),
+]
+
+
+@pytest.mark.parametrize("category, keyword, text, should_match", WORD_BOUNDARY_TABLE)
+def test_keyword_word_boundary_table(category, keyword, text, should_match):
+    pattern = _KEYWORD_PATTERNS[category][keyword]
+    assert bool(pattern.search(text)) == should_match
+
+
+def test_space_tourism_does_not_falsely_match_beauty_via_spa_substring():
+    # End-to-end reproduction of the reported false positive: under substring
+    # matching, "space" contained "spa" and this idea wrongly returned
+    # category="beauty_personal_care" with confidence 0.33. Nothing here is
+    # about beauty, skincare, or spas, so it must be an honest miss.
+    out = detect_category("I want to build a space tourism startup")
+    assert out["category"] is None
+
+
+def test_app_keyword_still_matches_as_a_genuine_standalone_word():
+    # Guards against the word-boundary fix being overly restrictive: "app"
+    # used as an actual standalone word (not embedded in "apparel" or
+    # "appliance") must still count.
+    out = detect_category("I want to build a chatbot app")
+    assert out["category"] == "software_apps"
+    assert out["confidence"] == 0.67

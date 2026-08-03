@@ -1,3 +1,5 @@
+import re
+
 KEYWORDS: dict[str, list[str]] = {
     "food_restaurants": ["food", "restaurant", "delivery", "cloud kitchen", "tiffin",
                          "cafe", "meal", "biryani", "canteen", "snack", "juice", "bakery"],
@@ -23,11 +25,24 @@ KEYWORDS: dict[str, list[str]] = {
 # zero-match miss (confidence 0.0) still resolves to category=None.
 CONFIDENCE_THRESHOLD = 0.3
 
+# Word-boundary matching with plural tolerance: plain substring containment
+# (`kw in text`) produced confidently wrong categories, e.g. "spa" matching
+# inside "space", or "app" matching inside "apparel"/"appliance"/"happy".
+# `\bkw(s|es)?\b` avoids that while still matching real plurals like
+# "restaurants" for the singular keyword "restaurant" (a bare `\bkw\b` would
+# NOT match the plural, since the boundary assertion fails between the "t"
+# and the "s"). Compiled once at import time, not per call, since this runs
+# on every keystroke via the debounced live-preview endpoint.
+_KEYWORD_PATTERNS: dict[str, dict[str, re.Pattern]] = {
+    slug: {kw: re.compile(rf"\b{re.escape(kw)}(s|es)?\b", re.IGNORECASE) for kw in kws}
+    for slug, kws in KEYWORDS.items()
+}
+
 
 def detect_category(idea: str) -> dict:
-    text = idea.lower()
     scores = {
-        slug: sum(1 for kw in kws if kw in text) for slug, kws in KEYWORDS.items()
+        slug: sum(1 for pattern in patterns.values() if pattern.search(idea))
+        for slug, patterns in _KEYWORD_PATTERNS.items()
     }
     best = max(scores, key=scores.get)
     confidence = round(min(1.0, scores[best] / 3), 2)
