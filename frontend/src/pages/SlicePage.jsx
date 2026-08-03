@@ -22,17 +22,18 @@ export default function SlicePage() {
 
   const analyze = async () => {
     setRunning(true); setAgent(null); setStrategy('')
+    esRef.current?.close()
+    const es = new EventSource(strategyStreamUrl(idea))
+    esRef.current = es
+    es.onmessage = (e) => setStrategy((s) => s + (JSON.parse(e.data).t ?? ''))
+    es.addEventListener('done', () => { es.close(); setRunning(false) })
+    es.onerror = () => { es.close(); setRunning(false) }
+    // Best-effort side panel. Must never block or cancel the stream.
     try {
-      if (match?.category) {
-        setAgent(await getCustomerInsight(match.category))
-      }
-      esRef.current?.close()
-      const es = new EventSource(strategyStreamUrl(idea))
-      esRef.current = es
-      es.onmessage = (e) => setStrategy((s) => s + (JSON.parse(e.data).t ?? ''))
-      es.addEventListener('done', () => { es.close(); setRunning(false) })
-      es.onerror = () => { es.close(); setRunning(false) }
-    } catch { setRunning(false) }
+      const det = await detectCategory(idea)
+      setMatch(det)
+      if (det.category) setAgent(await getCustomerInsight(det.category))
+    } catch { /* card stays hidden; the streamed message explains why */ }
   }
 
   return (
