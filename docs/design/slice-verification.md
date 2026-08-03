@@ -1,7 +1,14 @@
-# Vertical Slice Verification
+# Vertical Slice Verification — Automated Checks Only (live verification pending)
+
+This document currently records only the automated test/build evidence. The
+live, browser-and-API half of verification (real Gemini call, Groq fallback,
+3-scenario browser check) has **not** been run — see "Live verification —
+NOT YET RUN" below.
 
 **Date:** 2026-08-03
-**Commit:** 194aa04
+**Commit:** 194aa04 (the app commit the suites below were run against — this
+is the parent of the commit that adds this document, so the SHA recorded
+here intentionally predates the commit that introduces this file)
 
 Definition of done (roadmap Phase 1): idea typed in browser → matched category
 shown while typing → real complaint/praise data → strategy streamed word-by-word.
@@ -10,17 +17,24 @@ shown while typing → real complaint/praise data → strategy streamed word-by-
 
 | Check | Result |
 | --- | --- |
-| backend pytest suite | 49 passed, 0 warnings, in 1.16s |
-| ai_agents pytest suite | 13 passed, 0 warnings, in 45.34s |
+| backend pytest suite | verbatim summary line: `============================= 49 passed in 1.16s ==============================` — no warnings summary was emitted, so no warnings were reported |
+| ai_agents pytest suite | verbatim summary line: `============================= 13 passed in 45.34s ==============================` — no warnings summary was emitted, so no warnings were reported |
 | frontend `npm run build` | exit 0, built in 292ms — dist/index.html 0.45 kB (gzip 0.29 kB), dist/assets/index-COQI-moC.css 7.92 kB (gzip 2.31 kB), dist/assets/index-DXapQXfg.js 239.84 kB (gzip 78.41 kB) |
 
-Commands run, exactly as specified in the Task 13 brief:
+Commands actually run:
 
 ```bash
 cd "C:/Users/Balaji/Desktop/mini project/backend" && .venv/Scripts/python -m pytest -v
 cd "C:/Users/Balaji/Desktop/mini project/ai_agents" && .venv/Scripts/python -m pytest tests -v
 cd "C:/Users/Balaji/Desktop/mini project/frontend" && npm run build
 ```
+
+Note: the ai_agents invocation includes an explicit `tests` path argument,
+which differs textually from the Task 13 brief's `pytest -v` (no path). This
+is equivalent in effect because `ai_agents/pytest.ini` already sets
+`testpaths = tests`, so both forms collect the same 13 tests — confirmed by
+the "collected 13 items" line in the captured output. The command was not
+silently changed to match the brief; this is the command actually run.
 
 All three exited green with no retries needed. Verified immediately beforehand
 that none of the live-verification prerequisites exist on this machine:
@@ -40,6 +54,7 @@ which exist yet. They are deliberately unrecorded rather than assumed.
 | Out-of-scope idea friendly path (browser) | NOT RUN | backend requires precomputed data |
 | Live category preview while typing | NOT RUN | backend not started |
 | Time to first streamed token | NOT RUN | no live LLM call possible |
+| Screenshots (2-3, per brief template) | NOT RUN | requires a running backend and a live browser session; none exist yet |
 
 ## What the automated suites do and do not prove
 
