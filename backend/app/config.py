@@ -11,7 +11,7 @@ _ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_ENV_FILE, extra="ignore")
 
-    database_url: str = "sqlite:///./dev.db"
+    database_url: str = ""
     gemini_api_key: str = ""
     groq_api_key: str = ""
     cors_origins: list[str] = ["http://localhost:5173"]

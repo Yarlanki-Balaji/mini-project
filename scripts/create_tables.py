@@ -9,5 +9,6 @@ from app.config import get_settings  # noqa: E402
 from app.models.schema import Base  # noqa: E402
 
 engine = create_engine(get_settings().database_url)
+print("target DB:", engine.url.render_as_string(hide_password=True))
 Base.metadata.create_all(engine)
 print("tables created:", ", ".join(Base.metadata.tables))

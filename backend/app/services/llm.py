@@ -1,7 +1,10 @@
 import json
+import logging
 from collections.abc import Iterator
 
 from app.config import get_settings
+
+log = logging.getLogger(__name__)
 
 MAX_IDEA_CHARS = 500
 
@@ -41,7 +44,7 @@ def gemini_llm():
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", google_api_key=get_settings().gemini_api_key
+        model="gemini-2.5-flash", google_api_key=get_settings().gemini_api_key, timeout=30
     )
 
 
@@ -49,7 +52,9 @@ def groq_llm():
     # Imported lazily; see gemini_llm().
     from langchain_groq import ChatGroq
 
-    return ChatGroq(model="llama-3.3-70b-versatile", api_key=get_settings().groq_api_key)
+    return ChatGroq(
+        model="llama-3.3-70b-versatile", api_key=get_settings().groq_api_key, timeout=30
+    )
 
 
 def stream_strategy(prompt: str, factories: list | None = None) -> Iterator[str]:
@@ -61,11 +66,15 @@ def stream_strategy(prompt: str, factories: list | None = None) -> Iterator[str]
     design -- Phase 3 adds buffering to fix this.
     """
     for factory in factories if factories is not None else [gemini_llm, groq_llm]:
+        name = getattr(factory, "__name__", repr(factory))
+        log.info("attempting strategy stream via provider: %s", name)
         try:
             llm = factory()
             for chunk in llm.stream(prompt):
                 yield chunk.content or ""
             return
         except Exception:
+            log.warning("provider %s failed, trying next", name, exc_info=True)
             continue
+    log.error("all providers failed to stream a strategy")
     yield "Strategy generation is temporarily unavailable (all providers failed). Please retry."

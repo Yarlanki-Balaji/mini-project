@@ -27,6 +27,7 @@ df = pd.read_parquet(ROOT / "data" / "processed" / f"reviews_{slug}.parquet")
 payload = aggregate_sentiment(df)
 
 engine = create_engine(get_settings().database_url)
+print("target DB:", engine.url.render_as_string(hide_password=True))
 db = sessionmaker(bind=engine)()
 row = (
     db.query(CategoryInsight)
