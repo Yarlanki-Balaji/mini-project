@@ -1,0 +1,11 @@
+datasets
+pandas
+pyarrow
+vaderSentiment
+scikit-learn
+sqlalchemy
+psycopg[binary]
+pydantic-settings
+wbgapi
+kaggle
+pytest
