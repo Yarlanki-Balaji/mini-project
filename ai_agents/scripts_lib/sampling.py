@@ -7,7 +7,8 @@ MIN_CHARS = 20
 
 def clean_reviews(df: pd.DataFrame) -> pd.DataFrame:
     """Keep only rating+text, drop nulls and near-empty reviews."""
-    out = df[["rating", "text"]].dropna(subset=["text"]).copy()
+    out = df[["rating", "text"]].copy()
+    # NaN >= MIN_CHARS is False, so this also drops null/NaN text
     out = out[out["text"].str.len() >= MIN_CHARS]
     return out.reset_index(drop=True)
 

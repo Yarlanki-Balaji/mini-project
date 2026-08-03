@@ -29,8 +29,8 @@ def _headline(positive_keywords: list[str], negative_keywords: list[str]) -> str
 
 
 def _feedback_line(keywords: list[str], kind: str) -> str:
-    """`kind` is "praises" or "complaints"; used both as the empty-case noun
-    and (title-cased) as the populated-case label prefix."""
+    """`kind` is "praises" or "complaints"; used as both the empty-case noun
+    and the populated-case label prefix."""
     if not keywords:
         return f"No standout {kind} in the data"
     return f"Top {kind}: " + ", ".join(keywords)

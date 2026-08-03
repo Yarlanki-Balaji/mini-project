@@ -13,3 +13,5 @@ real datasets → an LLM streams back a data-grounded strategy report.
 - `ai_agents/` — offline ML: dataset sampling + per-agent precompute
 - `scripts/` — data acquisition
 - `data/` — sampled datasets (gitignored; recreate via scripts)
+
+Each of `backend/` and `ai_agents/` includes a `requirements.txt` listing dependencies and a `requirements.lock.txt` recording exact versions verified working. Rebuilds should install from the lock file to ensure reproducibility, especially important for a project demoed and graded from fresh environments.
