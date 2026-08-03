@@ -49,5 +49,9 @@ def detect_category(idea: str) -> dict:
     return {
         "category": best if confidence >= CONFIDENCE_THRESHOLD else None,
         "confidence": confidence,
-        "closest": best,
+        # max() always returns a key even when every score is 0 (it just
+        # picks the first dict key), which would make "closest" a fabricated
+        # similarity for a genuinely unsupported idea. Only report a closest
+        # match when at least one keyword actually hit.
+        "closest": best if scores[best] > 0 else None,
     }

@@ -46,7 +46,13 @@ def test_stream_out_of_scope_is_friendly(client, db):
                        params={"idea": "industrial drone repair workshop"}) as r:
         tokens, done = _events(r)
     assert done
-    assert "closest" in "".join(tokens).lower()
+    msg = "".join(tokens).lower()
+    # This idea has zero keyword signal (verified via detect_category), so
+    # "closest" is None too -- the message must name the supported category
+    # set instead of fabricating a similarity that was never computed.
+    assert "don't support" in msg
+    assert "food" in msg and "grocery" in msg
+    assert "closest" not in msg
 
 
 def test_stream_category_without_insights_is_friendly(client, db):

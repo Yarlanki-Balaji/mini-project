@@ -50,7 +50,9 @@ export default function SlicePage() {
         <p className="text-sm">
           {match.category
             ? `✓ Matched: ${match.category} (${Math.round(match.confidence * 100)}%)`
-            : `No direct match — closest: ${match.closest}`}
+            : match.closest
+              ? `No direct match — closest: ${match.closest}`
+              : 'No direct match in our supported categories yet.'}
         </p>
       )}
       <button

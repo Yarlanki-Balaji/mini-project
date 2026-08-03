@@ -34,10 +34,18 @@ def strategy_stream(idea: str, db: Session = Depends(get_db)):
     det = detect_category(idea)
 
     if det["category"] is None:
-        msg = (
-            f"We don't support that category deeply yet. Closest supported "
-            f"category: {det['closest']}. Try rephrasing your idea toward it."
-        )
+        if det["closest"] is None:
+            msg = (
+                "We don't support that category deeply yet. We support food & "
+                "restaurants, grocery, beauty & personal care, fashion, "
+                "electronics, software & apps, e-commerce and education ideas "
+                "-- try rephrasing toward one of those."
+            )
+        else:
+            msg = (
+                f"We don't support that category deeply yet. Closest supported "
+                f"category: {det['closest']}. Try rephrasing your idea toward it."
+            )
 
         def oos():
             yield _sse(msg)

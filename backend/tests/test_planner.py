@@ -9,13 +9,17 @@ def test_food_idea_maps_to_food_restaurants():
     assert out["confidence"] > 0.3
 
 
-def test_out_of_scope_returns_none_with_closest():
+def test_zero_signal_idea_returns_none_category_and_none_closest():
+    # Bug this pins: max() over an all-zero scores dict always returns a key
+    # (the first dict key, food_restaurants), which made "closest" a
+    # fabricated similarity for every unsupported idea -- always
+    # food_restaurants, regardless of the idea's actual content, right next
+    # to a 0.0 confidence. With genuinely zero keyword signal, closest must
+    # be None too, not a made-up nearest guess.
     out = detect_category("industrial drone repair workshop")
     assert out["category"] is None
-    assert out["closest"] in {
-        "food_restaurants", "grocery", "beauty_personal_care", "fashion",
-        "electronics", "software_apps", "ecommerce_retail", "education",
-    }
+    assert out["closest"] is None
+    assert out["confidence"] == 0.0
 
 
 def test_endpoint_returns_detection(client):
@@ -27,6 +31,17 @@ def test_endpoint_returns_detection(client):
 # --- Additional tests: pin the confidence-threshold bug fix and discriminate
 # behavior the three tests above don't exercise (see task-8-report.md for the
 # deliberate-breakage proof behind each one). ---
+
+
+def test_weak_but_real_signal_still_returns_a_slug_for_both_category_and_closest():
+    # Contrast case for the zero-signal test above: a single genuine keyword
+    # hit (the weakest possible non-zero signal) must still resolve to a
+    # real category slug, and "closest" must agree with it -- not fall back
+    # to None just because the signal is weak.
+    out = detect_category("I want to open a grocery store")
+    assert out["category"] == "grocery"
+    assert out["closest"] == "grocery"
+    assert out["confidence"] > 0.0
 
 
 def test_single_keyword_match_is_enough_to_report_a_category():
