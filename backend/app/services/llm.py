@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from collections.abc import Iterator
 
 from app.config import get_settings
@@ -7,6 +8,13 @@ from app.config import get_settings
 log = logging.getLogger(__name__)
 
 MAX_IDEA_CHARS = 500
+
+# Strips delimiter-like text the user could type to escape the <user_idea>
+# block and land subsequent text at the instruction layer, e.g. typing
+# "</user_idea>" in the idea itself. Applied before truncation, since the
+# escape sequence is far shorter than MAX_IDEA_CHARS and truncation alone
+# does not remove it.
+_DELIM_RE = re.compile(r"</?\s*user_idea\s*>", re.IGNORECASE)
 
 PROMPT_TEMPLATE = """You are an AI business strategy advisor for Indian entrepreneurs.
 
@@ -31,11 +39,29 @@ above: 1) opportunity, 2) what customers love/hate and what to do about it,
 
 
 def build_prompt(idea: str, category: str, payloads: list[dict]) -> str:
+    sanitized = _DELIM_RE.sub("", idea)
     return PROMPT_TEMPLATE.format(
-        idea=idea[:MAX_IDEA_CHARS],
+        idea=sanitized[:MAX_IDEA_CHARS],
         category=category,
         agent_data=json.dumps(payloads, indent=2),
     )
+
+
+def _as_text(content) -> str:
+    """Normalize a langchain-core chunk's `content` to plain text.
+
+    `content: str | list[str | dict]` -- the primary model is a thinking
+    model, which is exactly where list-shaped multi-part content appears.
+    Every test fake yields a plain str, so this is structurally invisible to
+    the test suite unless exercised directly.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            p if isinstance(p, str) else str(p.get("text", "")) for p in content
+        )
+    return ""
 
 
 def gemini_llm():
@@ -71,7 +97,7 @@ def stream_strategy(prompt: str, factories: list | None = None) -> Iterator[str]
         try:
             llm = factory()
             for chunk in llm.stream(prompt):
-                yield chunk.content or ""
+                yield _as_text(chunk.content)
             return
         except Exception:
             log.warning("provider %s failed, trying next", name, exc_info=True)
